@@ -3,6 +3,9 @@
 
 <arg name="dist" default="0"/>
 
+<!-- Start Rviz -->
+ <node type="rviz" name="rviz" pkg="rviz" args="-d $(find ccmslam)/launch/Tello/tello_ccmslam.rviz" />
+
 <!-- -start disturber before group ns -->
 <group if="$(arg dist)">
   <node pkg="ccmslam" type="ccmslamCommTestDisturber" name="Disturber" args="0.0 0.0 0.0" output="screen" />
