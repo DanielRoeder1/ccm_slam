@@ -13,7 +13,7 @@
 
   <group ns="ccmslam">
 
-  <node pkg="tf" type="static_transform_publisher" name="linkS0_broadcaster" args="0 0 5 -1.571 0 -2 world odomS0 100" />
+  <node pkg="tf" type="static_transform_publisher" name="linkS0_broadcaster" args="0 0 5 -1.571 0 -1.7802 world odomS0 100" />
   <node pkg="tf" type="static_transform_publisher" name="linkS1_broadcaster" args="0 0 5 -1.571 0 -2 world odomS1 100" />
   <node pkg="tf" type="static_transform_publisher" name="linkS2_broadcaster" args="0 0 5 -1.571 0 -2 world odomS2 100" />
   <node pkg="tf" type="static_transform_publisher" name="linkS3_broadcaster" args="0 0 5 -1.571 0 -2 world odomS3 100" />

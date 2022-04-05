@@ -248,7 +248,8 @@ Visualization Manager:
       Marker Topic: /ccmslam/ServerMarkerMap0
       Name: MarkerS0
       Namespaces:
-        {}
+        sCovGraph0: true
+        sTraj0: true
       Queue Size: 100
       Value: true
     - Alpha: 1
@@ -507,7 +508,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 562.6973876953125
+      Distance: 17.069276809692383
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -515,17 +516,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 246.0726776123047
-        Y: 301.0248718261719
-        Z: -361.81060791015625
+        X: 0.02892160415649414
+        Y: -0.13206100463867188
+        Z: 0.04161834716796875
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7497972249984741
+      Pitch: 0.2567741274833679
       Target Frame: world
-      Yaw: 4.048146724700928
+      Yaw: 0.4961966276168823
     Saved:
       - Class: rviz/Orbit
         Distance: 64.41840362548828
