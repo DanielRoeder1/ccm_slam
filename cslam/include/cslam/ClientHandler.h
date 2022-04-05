@@ -32,6 +32,7 @@
 #include <boost/enable_shared_from_this.hpp>
 #include <mutex>
 #include <sstream>
+#include <math.h>
 
 //ROS
 //...
@@ -91,6 +92,14 @@ public:
     #endif
 
     //---getter/setter---
+    /* ----------------------------------- */
+    void PublishPoseThread();
+    threadptr ptrPoseStamped;
+    bool receivedImageFlag;
+    ros::Publisher mPubPose;
+    ros::Publisher mPubPose2;
+    ros::Publisher mPubPath;
+    /* --------------------------------- */
     void SetMapMatcher(matchptr pMatch);
     void ChangeMap(mapptr pMap, g2o::Sim3 g2oS_wnewmap_wcurmap);
     commptr GetCommPtr(){return mpComm;}

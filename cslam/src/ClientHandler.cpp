@@ -23,6 +23,7 @@
 */
 
 #include <cslam/ClientHandler.h>
+#include "nav_msgs/Path.h"
 
 namespace cslam {
 
@@ -158,6 +159,19 @@ void ClientHandler::InitializeClient()
 {
     cout << "Client " << mClientId << " --> Initialize Threads" << endl;
 
+    /* ---------------------------------------- */
+    std::stringstream* ss;
+    ss = new stringstream;
+    *ss << "PoseOut" << "Client" << mClientId;
+    std::stringstream* ss2;
+    ss2 = new stringstream;
+    *ss2 << "PathOut" << "Client" << mClientId;
+    string PubPoseTopicName = ss->str();
+    string PathTopicName = ss2->str();
+    mPubPose = mNh.advertise<geometry_msgs::PoseStamped>(PubPoseTopicName, 10);
+    mPubPath = mNh.advertise<nav_msgs::Path>(PathTopicName, 10);
+    /*  ----------------------------------------- */
+
     //+++++ Create Drawers. These are used by the Viewer +++++
     mpViewer.reset(new Viewer(mpMap,mpCC));
     usleep(10000);
@@ -184,6 +198,8 @@ void ClientHandler::InitializeClient()
     mptMapping.reset(new thread(&LocalMapping::RunClient,mpMapping));
     mptComm.reset(new thread(&Communicator::RunClient,mpComm));
     mptViewer.reset(new thread(&Viewer::RunClient,mpViewer));
+    /* --------------------------------------------- */
+    ptrPoseStamped.reset(new thread(&ClientHandler::PublishPoseThread, this));
     usleep(10000);
 }
 
@@ -289,7 +305,79 @@ void ClientHandler::CamImgCb(sensor_msgs::ImageConstPtr pMsg)
     }
 
     mpTracking->GrabImageMonocular(cv_ptr->image,cv_ptr->header.stamp.toSec());
+
+    /* ---------------------------------------  */
+    if (mpTracking->mState == 2) {
+        receivedImageFlag = true;
+    }
 }
+
+/* --------------------------------------------------- */
+// Todo: 12 deg rotation not yet applied to rotation matrix
+// Todo: read 12 deg from config file
+void ClientHandler::PublishPoseThread(){
+    geometry_msgs::PoseStamped pose_msg;
+    nav_msgs::Path path_pose_msg;
+
+    std::string frame_id = "world";
+    pose_msg.header.frame_id = frame_id;
+    path_pose_msg.header.frame_id = frame_id;
+
+    tf::Matrix3x3 tf_orb_to_ros(
+        0,  0,  1,
+        -1,  0,  0,
+        0, -1,  0);
+
+    // Rotate to account for Tello camera looking slightly downwards
+    double deg = 12;
+    double rads = deg * 3.14159265 / 180;
+    tf::Matrix3x3 rotate_12degY(
+        cos(rads), 0, sin(rads),
+        0,         1,         0,
+        -sin(rads), 0, cos(rads));
+
+    while(1) {
+        // suspend operation for microsecond interval
+        usleep(3333);
+        if (receivedImageFlag) {
+            receivedImageFlag = false;
+            if (mpTracking->mState == mpTracking->OK) {
+                // Get transform / pose matrix from current frame
+                cv::Mat Tcw = mpTracking->mCurrentFrame->mTcw;
+
+                tf::Matrix3x3 tf_camera_rotation(
+                    Tcw.at<float> (0, 0), Tcw.at<float> (0, 1), Tcw.at<float> (0, 2),
+                    Tcw.at<float> (1, 0), Tcw.at<float> (1, 1), Tcw.at<float> (1, 2),
+                    Tcw.at<float> (2, 0), Tcw.at<float> (2, 1), Tcw.at<float> (2, 2)
+                );
+
+                tf::Vector3 tf_camera_translation(Tcw.at<float> (0,3), Tcw.at<float> (1,3), Tcw.at<float> (2,3));
+
+                // Transform from orb coordinate system to ros coordinate system on camera coordinates
+                tf_camera_rotation    = tf_orb_to_ros * tf_camera_rotation;
+                tf_camera_translation = tf_orb_to_ros * tf_camera_translation;
+
+                // Inverse matrix
+                tf_camera_rotation    = tf_camera_rotation.transpose();
+                tf_camera_translation = -(tf_camera_rotation * tf_camera_translation);
+
+                // Transform from orb coordinate system to ros coordinate system on map coordinates
+                tf_camera_rotation    = tf_orb_to_ros * tf_camera_rotation;
+                tf_camera_translation = rotate_12degY * tf_orb_to_ros * tf_camera_translation;
+
+                // Transform R T into pose object and subsequently into msg
+                tf::Transform tf_transform = tf::Transform(tf_camera_rotation, tf_camera_translation);
+                tf::Stamped<tf::Pose> grasp_tf_pose(tf_transform,ros::Time::now(), frame_id);
+                tf::poseStampedTFToMsg(grasp_tf_pose, pose_msg);
+                path_pose_msg.poses.push_back(pose_msg);
+
+                mPubPose.publish(pose_msg);
+                mPubPath.publish(path_pose_msg);
+            }
+        }
+    }
+}
+/* --------------------------------------------------- */
 
 void ClientHandler::LoadMap(const std::string &path_name) {
 
