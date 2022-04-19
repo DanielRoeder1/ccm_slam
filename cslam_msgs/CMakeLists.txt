@@ -22,6 +22,9 @@ add_message_files(
   MPred.msg
 
   Map.msg
+
+  Calibration.msg
+  StampedInt.msg
 )
 
 generate_messages(
