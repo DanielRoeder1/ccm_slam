@@ -172,6 +172,7 @@ add_library(ccmslam_lib
   include/cslam/estd.h
 )
 
+
 add_dependencies(ccmslam_lib ccmslam_msgs_generate_messages_cpp)
 target_link_libraries(ccmslam_lib ${EXTERNAL_LIBRARIES} ${THIRDPARTY_LIBS})
 
@@ -200,3 +201,18 @@ add_executable(ccmslamServerNode
 )
 add_dependencies(ccmslamServerNode ccmslam_lib)
 target_link_libraries(ccmslamServerNode ${EXTERNAL_LIBRARIES} ccmslam_lib)
+
+add_executable(ccmslamSimulatedCalibration
+#node
+  src/server/SimulatedCalibration.cpp
+)
+add_dependencies(ccmslamSimulatedCalibration ccmslam_lib)
+target_link_libraries(ccmslamSimulatedCalibration ${EXTERNAL_LIBRARIES} ccmslam_lib)
+
+
+add_executable(ccmslamORBGenerator
+#node
+  src/ORBGenerator.cpp
+)
+add_dependencies(ccmslamORBGenerator ccmslam_lib)
+target_link_libraries(ccmslamORBGenerator ${EXTERNAL_LIBRARIES} ccmslam_lib ${PROJECT_SOURCE_DIR}/thirdparty/cnpy/libcnpy.so)

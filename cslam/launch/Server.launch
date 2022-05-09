@@ -53,6 +53,9 @@
   <param name="~MapInTopicName3" type="string" value="MapOutClient3Disturbed" if="$(arg dist)" />
 
 </node>
-
   </group>
+  
+<node pkg="ccmslam" type="ccmslamSimulatedCalibration" name="ccmslamSimulatedCalibration" output="screen">
+	<param name="ClientId" type="int" value="0"/>
+</node>
 </launch>

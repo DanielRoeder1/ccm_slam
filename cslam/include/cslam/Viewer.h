@@ -59,6 +59,8 @@
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/PointCloud2.h>
 
+#include <ccmslam_msgs/Calibration.h>
+
 using namespace std;
 using namespace estd;
 
@@ -154,17 +156,29 @@ private:
     //Publisher
     ros::Publisher mPubMarker0;
     ros::Publisher mPubPcl0;
+    ros::Publisher mPubPcl0w;
 
     ros::Publisher mPubMarker1;
     ros::Publisher mPubPcl1;
+    ros::Publisher mPubPcl1w;
 
     ros::Publisher mPubMarker2;
     ros::Publisher mPubPcl2;
+    ros::Publisher mPubPcl2w;
 
     ros::Publisher mPubMarker3;
     ros::Publisher mPubPcl3;
+    ros::Publisher mPubPcl3w;
 
     ros::Publisher mPubLocalMPs;
+
+    // Scaling
+    ros::Subscriber mSubScale;
+    void SetScale(ccmslam_msgs::Calibration msg);
+
+    float ScaleFactor;
+    float ZOffset;
+    bool updated_scale = false;
 
     //Data
     map<string,VisBundle> mmVisData;

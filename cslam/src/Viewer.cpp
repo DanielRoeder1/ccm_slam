@@ -117,6 +117,10 @@ Viewer::Viewer(mapptr pMap, ccptr pCC)
         *ss << "ServerMapPointsMap0";
         mPubPcl0 = mNh.advertise<sensor_msgs::PointCloud2>(ss->str(),10);
 
+        ss = new stringstream;
+        *ss << "ServerMapPointsMap0_w";
+        mPubPcl0w = mNh.advertise<sensor_msgs::PointCloud2>(ss->str(),10);
+
         //++++++++++ Map 1 +++++++++
 
         ss = new stringstream;
@@ -126,6 +130,10 @@ Viewer::Viewer(mapptr pMap, ccptr pCC)
         ss = new stringstream;
         *ss << "ServerMapPointsMap1";
         mPubPcl1 = mNh.advertise<sensor_msgs::PointCloud2>(ss->str(),10);
+
+        ss = new stringstream;
+        *ss << "ServerMapPointsMap1_w";
+        mPubPcl1w = mNh.advertise<sensor_msgs::PointCloud2>(ss->str(),10);
 
         //++++++++++ Map 2 +++++++++
 
@@ -137,6 +145,10 @@ Viewer::Viewer(mapptr pMap, ccptr pCC)
         *ss << "ServerMapPointsMap2";
         mPubPcl2 = mNh.advertise<sensor_msgs::PointCloud2>(ss->str(),10);
 
+        ss = new stringstream;
+        *ss << "ServerMapPointsMap2_w";
+        mPubPcl2w = mNh.advertise<sensor_msgs::PointCloud2>(ss->str(),10);
+
         //++++++++++ Map 3 +++++++++
 
         ss = new stringstream;
@@ -146,6 +158,16 @@ Viewer::Viewer(mapptr pMap, ccptr pCC)
         ss = new stringstream;
         *ss << "ServerMapPointsMap3";
         mPubPcl3 = mNh.advertise<sensor_msgs::PointCloud2>(ss->str(),10);
+
+        ss = new stringstream;
+        *ss << "ServerMapPointsMap3_w";
+        mPubPcl3w = mNh.advertise<sensor_msgs::PointCloud2>(ss->str(),10);
+
+        // ------ Subscriber for scaling values ------
+        ScaleFactor = 1;
+        ZOffset = 0;
+        mSubScale = mNh.subscribe<ccmslam_msgs::Calibration>("/tellos/ScaleFactorClient0",10,&Viewer::SetScale,this);
+
     }
 
     delete ss;
@@ -786,6 +808,7 @@ void Viewer::PubKeyFramesAsFrusta()
 void Viewer::PubMapPointsAsCloud()
 {
     pcl::PointCloud<pcl::PointXYZRGB> Cloud;
+    pcl::PointCloud<pcl::PointXYZRGB> Cloud_world;
 
     mvNumPoints[mCurVisBundle.mNativeId] = 0;
 
@@ -804,10 +827,30 @@ void Viewer::PubMapPointsAsCloud()
         }
 
         pcl::PointXYZRGB p;
+        pcl::PointXYZRGB p_world;
         cv::Mat Tworld = pMPi->GetWorldPos();
+
+
+
+        // ----- Trying to get true world pos -----
+        float data_orb[9] = { 0,  0,  1,-1,  0,  0,0, -1,  0};
+        cv::Mat tf_orb_to_ros(3,3,CV_32F,data_orb);
+
+        // Rotate to account for Tello camera looking slightly downwards
+        double deg = 12;
+        double rads = deg * 3.14159265 / 180;
+        float data[9] = { cos(rads), 0, sin(rads), 0,1,0,-sin(rads), 0, cos(rads)};
+        cv::Mat rotate_12degY(3,3,CV_32F, data);
+        cv::Mat Tworld_w = rotate_12degY * tf_orb_to_ros * Tworld * ScaleFactor;
+        // --------------------------------------------
+
         p.x = (params::vis::mfScaleFactor)*((double)(Tworld.at<float>(0,0)));
         p.y = (params::vis::mfScaleFactor)*((double)(Tworld.at<float>(0,1)));
         p.z = (params::vis::mfScaleFactor)*((double)(Tworld.at<float>(0,2)));
+
+        p_world.x = ((double)(Tworld_w.at<float>(0,0)));
+        p_world.y = ((double)(Tworld_w.at<float>(0,1)));
+        p_world.z = ((double)(Tworld_w.at<float>(0,2))) + ZOffset * ScaleFactor;
 
         if(pMPi->mbFromServer && pMPi->mbMultiUse)
         {
@@ -846,7 +889,13 @@ void Viewer::PubMapPointsAsCloud()
             p.b = static_cast<uint8_t>(params::colors::mc3.mu8B);
         }
 
+
+        p_world.r = p.r;
+        p_world.g = p.g;
+        p_world.b = p.b;
+
         Cloud.points.push_back(p);
+        Cloud_world.points.push_back(p_world);
 
         ++mvNumPoints[mCurVisBundle.mNativeId];
     }
@@ -854,21 +903,37 @@ void Viewer::PubMapPointsAsCloud()
     if(!Cloud.points.empty())
     {
         sensor_msgs::PointCloud2 pclMsg;
+        sensor_msgs::PointCloud2 pclMsg_world;
         pcl::toROSMsg(Cloud,pclMsg);
+        pcl::toROSMsg(Cloud_world,pclMsg_world);
         pclMsg.header.frame_id = msCurFrame;
+        pclMsg_world.header.frame_id = string("world");
         pclMsg.header.stamp = ros::Time::now();
+        pclMsg_world.header.stamp = ros::Time::now();
 
-        if(mCurVisBundle.mNativeId == 0)
+        if(mCurVisBundle.mNativeId == 0){
             mPubPcl0.publish(pclMsg);
-        else if(mCurVisBundle.mNativeId == 1)
+            mPubPcl0w.publish(pclMsg_world);}
+        else if(mCurVisBundle.mNativeId == 1){
             mPubPcl1.publish(pclMsg);
-        else if(mCurVisBundle.mNativeId == 2)
+            mPubPcl1w.publish(pclMsg_world);}
+        else if(mCurVisBundle.mNativeId == 2){
             mPubPcl2.publish(pclMsg);
-        else if(mCurVisBundle.mNativeId == 3)
+            mPubPcl2w.publish(pclMsg_world);}
+        else if(mCurVisBundle.mNativeId == 3){
             mPubPcl3.publish(pclMsg);
+            mPubPcl3w.publish(pclMsg_world);}
         else
             cout << "\033[1;31m!!!!! ERROR !!!!!\033[0m " << __func__ << __LINE__ << ": mCurVisBundle.mNativeId not in [0,3]" << endl;
     }
+}
+
+void Viewer::SetScale(ccmslam_msgs::Calibration msg)
+{
+    ScaleFactor = msg.scale_factor;
+    ZOffset = msg.z_offset;
+    updated_scale = true;
+    std::cout << "Scale factor set to: " << ScaleFactor << " and Z offset to: " << ZOffset << std::endl;
 }
 
 pcl::PointXYZRGB Viewer::CreateMP(Mat p3D, size_t nClientId)
@@ -941,6 +1006,7 @@ void Viewer::PubTrajectories()
     vector<visualization_msgs::Marker> vMsgs;
     std::stringstream* ss;
 
+    // 4 because of the maximum of 4 agents
     for(int i=0;i<4;++i)
     {
         visualization_msgs::Marker Traj;
@@ -952,9 +1018,11 @@ void Viewer::PubTrajectories()
         Traj.ns = ss->str();
         Traj.id=0;
         Traj.type = visualization_msgs::Marker::LINE_STRIP;
+        // Traj.scale = 0.25
         Traj.scale.x=params::vis::mfTrajMarkerSize;
         Traj.action=visualization_msgs::Marker::ADD;
 
+        // Traj for agent 0 is coloured white
         if(i == 0)
         {
             Traj.color = params::colors::mc0.mColMsg;
@@ -978,6 +1046,7 @@ void Viewer::PubTrajectories()
 
     delete ss;
 
+    // Viewer.ScaleFactor = 20
     float fScale = static_cast<float>(params::vis::mfScaleFactor);
 
     for(int ito = 0;ito<4;++ito)
@@ -1004,6 +1073,7 @@ void Viewer::PubTrajectories()
 
             geometry_msgs::Point p;
 
+            // Get translation vector and scale by 20
             p.x = fScale*(T.at<float>(0,3));
             p.y = fScale*(T.at<float>(1,3));
             p.z = fScale*(T.at<float>(2,3));

@@ -13,6 +13,7 @@
 #include <message_filters/sync_policies/approximate_time.h>
 #include <vector>
 #include <numeric>
+#include <sstream>
 
 /*
 - The Listener clas subscribes to the tof_heigth topic of the drone and the PoseOut topic of the SLAM algorithm. For the
@@ -47,12 +48,27 @@ class Listener{
 
     public:
         Listener():sync(MySyncPolicy(10),tof_sub,pose_sub){
+            
+            int client_id;
+            n.param("ClientId",client_id,0);
+            ROS_INFO("Starting Calibration node for ClientId %i", client_id);
+
+            std::stringstream* ss1;
+            ss1 = new std::stringstream;
+            *ss1 << "/ccmslam/PoseOutClient" << client_id;
+            std::string subPoseName = ss1->str();
+
+            std::stringstream* ss2;
+            ss2 = new std::stringstream;
+            *ss2 << "/tellos/ScaleFactorClient" << client_id;
+            std::string pubCalibrationName = ss2->str();
+
             tof_sub.subscribe(n, "stamped_tof", 1);
-            pose_sub.subscribe(n, "/ccmslam/PoseOutClient0", 1);
+            pose_sub.subscribe(n,subPoseName, 1);
             sync.registerCallback(boost::bind(&Listener::data_callback,this, _1, _2));
 
             calibrate_sub = n.subscribe<std_msgs::Empty>("calibrate_z",1000, &Listener::callibrate_callback,this);
-            calibrate_pub = n.advertise<ccmslam_msgs::Calibration>("/tellos/ScaleFactorClient0", 1000);
+            calibrate_pub = n.advertise<ccmslam_msgs::Calibration>(pubCalibrationName, 1000);
 
             sub_tof_height = n.subscribe<std_msgs::Int32>("tellos/a/tof_height", 1000, &Listener::republish_height, this);
             pub_tof_height = n.advertise<ccmslam_msgs::StampedInt>("stamped_tof",1000);
@@ -70,12 +86,6 @@ void Listener::data_callback(const ccmslam_msgs::StampedInt::ConstPtr& tof_msg,c
     {
         tof_sub.unsubscribe();
         pose_sub.unsubscribe();
-
-        // Print vector
-        for(int i = 0; i < tof_height.size(); i++)
-        {
-        std::cout << tof_height[i];
-        }
 
         this->calibrate(tof_height, pose_z);
     }
@@ -97,15 +107,15 @@ void Listener::calibrate(std::vector<float> tof_heights, std::vector<float> pose
 {
     int n = tof_heights.size();
     double x_mean = std::accumulate(tof_heights.begin(), tof_heights.end(), 0.0) / tof_heights.size();
-    std::cout << "Xmean "<< x_mean << std::endl;
+    //std::cout << "Xmean "<< x_mean << std::endl;
     double y_mean = std::accumulate(pose_z.begin(), pose_z.end(), 0.0) / pose_z.size();
-    std::cout << "Ymean "<< y_mean << std::endl;
+    //std::cout << "Ymean "<< y_mean << std::endl;
     double SS_xy = std::inner_product(tof_heights.begin(), tof_heights.end(), pose_z.begin(), 0.0);
     SS_xy = SS_xy - n * x_mean * y_mean;
-    std::cout << "SS_xy "<< SS_xy << std::endl;
+    //std::cout << "SS_xy "<< SS_xy << std::endl;
 
     double SS_xx = std::inner_product(tof_heights.begin(), tof_heights.end(), tof_heights.begin(), 0.0);
-    std::cout << "SS_xx "<< SS_xx << std::endl;
+    //std::cout << "SS_xx "<< SS_xx << std::endl;
     SS_xx = SS_xx - n * x_mean * x_mean;
 
 
@@ -115,8 +125,13 @@ void Listener::calibrate(std::vector<float> tof_heights, std::vector<float> pose
     b_1 = 1 / b_1;
     b_0 = abs(b_0);
 
-    std::cout << "ZOffset: " << b_0 << std::endl;
-    std::cout << "Coefficient: " << b_1 << std::endl;
+
+    ROS_INFO("Calibration: ZOffset %f", b_0);
+    ROS_INFO("Calibration: Coefficient %f", b_1);
+
+    
+    //std::cout << "ZOffset: " << b_0 << std::endl;
+    //std::cout << "Coefficient: " << b_1 << std::endl;
 
     /* Using only two points for calibration
     float diff_tof = tof_heights[0] - tof_heights[1];
@@ -145,6 +160,7 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "SimulatedCalibrator");
     ros::NodeHandle n;
+
     Listener l;
 
     ros::Rate r(100);
