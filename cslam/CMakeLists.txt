@@ -215,4 +215,4 @@ add_executable(ccmslamORBGenerator
   src/ORBGenerator.cpp
 )
 add_dependencies(ccmslamORBGenerator ccmslam_lib)
-target_link_libraries(ccmslamORBGenerator ${EXTERNAL_LIBRARIES} ccmslam_lib ${PROJECT_SOURCE_DIR}/thirdparty/cnpy/libcnpy.so)
+target_link_libraries(ccmslamORBGenerator ${EXTERNAL_LIBRARIES} ccmslam_lib ${PROJECT_SOURCE_DIR}/thirdparty/cnpy/build/libcnpy.so)

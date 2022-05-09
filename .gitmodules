@@ -1,0 +1,3 @@
+[submodule "cslam/thirdparty/cnpy"]
+	path = cslam/thirdparty/cnpy
+	url = https://github.com/rogersce/cnpy
