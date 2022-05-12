@@ -274,6 +274,9 @@ public:
     //---environment---
     double mdServerTimestamp;
     /*const*/ double mTimeStamp;
+    // Need this timestamp to match ros::Time to Image for TimeSync using the double time for ros::Time can lead
+    // to a difference of 1 nanosecond i.e. no match
+    uint64_t mTimeStamp_nsec;
     double mdInsertStamp;
 
     //---IDs---

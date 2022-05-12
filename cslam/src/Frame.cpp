@@ -35,7 +35,7 @@ float Frame::mfGridElementWidthInv, Frame::mfGridElementHeightInv;
 //Copy Constructor
 Frame::Frame(const Frame &frame)
     :mpORBvocabulary(frame.mpORBvocabulary), mpORBextractor(frame.mpORBextractor),
-     mTimeStamp(frame.mTimeStamp), mK(frame.mK.clone()), mDistCoef(frame.mDistCoef.clone()),
+     mTimeStamp(frame.mTimeStamp),mTimeStamp_nsec(frame.mTimeStamp_nsec), mK(frame.mK.clone()), mDistCoef(frame.mDistCoef.clone()),
      N(frame.N), mvKeys(frame.mvKeys), mvKeysUn(frame.mvKeysUn),
      mBowVec(frame.mBowVec), mFeatVec(frame.mFeatVec), mDescriptors(frame.mDescriptors.clone()),
      mvpMapPoints(frame.mvpMapPoints), mvbOutlier(frame.mvbOutlier), mId(frame.mId),
@@ -52,8 +52,8 @@ Frame::Frame(const Frame &frame)
         SetPose(frame.mTcw);
 }
 
-Frame::Frame(const cv::Mat &imGray, const double &timeStamp, extractorptr pExtractor, vocptr pVoc, cv::Mat &K, cv::Mat &distCoef, size_t ClientId)
-    :mpORBvocabulary(pVoc),mpORBextractor(pExtractor), mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone())
+Frame::Frame(const cv::Mat &imGray, const double &timeStamp, const uint64_t &timeStamp_nsec, extractorptr pExtractor, vocptr pVoc, cv::Mat &K, cv::Mat &distCoef, size_t ClientId)
+    :mpORBvocabulary(pVoc),mpORBextractor(pExtractor), mTimeStamp(timeStamp),mTimeStamp_nsec(timeStamp_nsec), mK(K.clone()),mDistCoef(distCoef.clone())
 {
     // Frame ID
     mId = make_pair(nNextId++,ClientId);

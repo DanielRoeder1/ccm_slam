@@ -68,7 +68,7 @@ public:
     Frame(const Frame &frame);
 
     // Constructor for Monocular cameras.
-    Frame(const cv::Mat &imGray, const double &timeStamp, extractorptr pExtractor, vocptr pVoc, cv::Mat &K, cv::Mat &distCoef, size_t ClientId);
+    Frame(const cv::Mat &imGray, const double &timeStamp, const uint64_t &timeStamp_nsec, extractorptr pExtractor, vocptr pVoc, cv::Mat &K, cv::Mat &distCoef, size_t ClientId);
 
     // Extract ORB on the image.
     void ExtractORB(const cv::Mat &im);
@@ -110,6 +110,7 @@ public:
 
     // Frame timestamp.
     double mTimeStamp;
+    uint64_t mTimeStamp_nsec;
 
     // Calibration matrix and OpenCV distortion parameters.
     cv::Mat mK;

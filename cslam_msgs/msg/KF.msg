@@ -4,6 +4,7 @@ uint16 mnId # unique KF id
 uint8 mClientId # client id
 uint32 mUniqueId
 float64 dTimestamp
+int64 dTimestamp_nsec
 bool mbAck
 
 #Grid (to speed up feature matching)

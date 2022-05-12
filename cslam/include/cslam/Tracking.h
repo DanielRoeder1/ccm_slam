@@ -90,7 +90,7 @@ public:
              dbptr pKFDB, const string &strCamPath, size_t ClientId);
 
     // Preprocess the input and call Track(). Extract features and performs stereo matching.
-    cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp);
+    cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp, const uint64_t &timestamp_nsec);
 
     // Pointer Setters
     void SetLocalMapper(mappingptr pLocalMapper) {mpLocalMapper = pLocalMapper;}

@@ -49,7 +49,7 @@ KeyFrame::KeyFrame(vocptr pVoc, mapptr pMap, dbptr pKFDB, commptr pComm, eSystem
 }
 
 KeyFrame::KeyFrame(Frame &F, mapptr pMap, dbptr pKFDB, commptr pComm, eSystemState SysState, size_t UniqueId)
-    : mFrameId(F.mId),mUniqueId(UniqueId),mTimeStamp(F.mTimeStamp),mVisId(-1),
+    : mFrameId(F.mId),mUniqueId(UniqueId),mTimeStamp(F.mTimeStamp), mTimeStamp_nsec(F.mTimeStamp_nsec),mVisId(-1),
       mnGridCols(FRAME_GRID_COLS), mnGridRows(FRAME_GRID_ROWS),
       mfGridElementWidthInv(F.mfGridElementWidthInv), mfGridElementHeightInv(F.mfGridElementHeightInv),
       mTrackReferenceForFrame(defpair), mFuseTargetForKF(defpair),
@@ -70,6 +70,10 @@ KeyFrame::KeyFrame(Frame &F, mapptr pMap, dbptr pKFDB, commptr pComm, eSystemSta
       mbLoopCorrected(false),
       mbAck(false),mbFromServer(false),mbUpdatedByServer(false),mCorrected_MM(defpair),mbSendFull(true)
 {
+
+    // At this point the MapPoints vector just equals the size of the KeyPoints that where extracted by ORB
+    // std::cout << "Number of MapPoints" << mvpMapPoints.size() << std::endl;
+    
     mId=make_pair(nNextId++,F.mId.second);
 
     mspComm.insert(pComm);
@@ -1508,6 +1512,7 @@ void KeyFrame::ConvertToMessage(ccmslam_msgs::Map &msgMap, g2o::Sim3 mg2oS_wcurm
         Msg.mClientId = static_cast<uint8_t>(mId.second);
         Msg.mUniqueId = static_cast<uint32_t>(mUniqueId);
         Msg.dTimestamp = mTimeStamp;
+        Msg.dTimestamp_nsec = mTimeStamp_nsec;
 
         msgMap.Keyframes.push_back(Msg);
     }
@@ -1665,6 +1670,7 @@ void KeyFrame::WriteMembersFromMessage(ccmslam_msgs::KF *pMsg, g2o::Sim3 mg2oS_w
 
     mId = make_pair(pMsg->mnId,pMsg->mClientId);
     mTimeStamp = pMsg->dTimestamp;
+    mTimeStamp_nsec = pMsg->dTimestamp_nsec;
     mnGridCols = pMsg->mnGridCols;
     mnGridRows=pMsg->mnGridRows;
     mfGridElementWidthInv=pMsg->mfGridElementWidthInv;

@@ -92,7 +92,7 @@ Tracking::Tracking(ccptr pCC, vocptr pVoc, viewptr pFrameViewer, mapptr pMap, db
     }
 }
 
-cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
+cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp, const uint64_t &timestamp_nsec)
 {
     mImGray = im;
 
@@ -112,10 +112,10 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
     }
 
     if(mState==NOT_INITIALIZED || mState==NO_IMAGES_YET)
-        mCurrentFrame.reset(new Frame(mImGray,timestamp,mpIniORBextractor,mpORBVocabulary,mK,mDistCoef,mClientId));
+        mCurrentFrame.reset(new Frame(mImGray,timestamp, timestamp_nsec,mpIniORBextractor,mpORBVocabulary,mK,mDistCoef,mClientId));
     else
     {
-        mCurrentFrame.reset(new Frame(mImGray,timestamp,mpORBextractor,mpORBVocabulary,mK,mDistCoef,mClientId));
+        mCurrentFrame.reset(new Frame(mImGray,timestamp, timestamp_nsec,mpORBextractor,mpORBVocabulary,mK,mDistCoef,mClientId));
     }
 
     Track();
