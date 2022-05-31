@@ -105,6 +105,9 @@ public:
         bool operator() (const mpptr pA, const mpptr pB) const;
     };
 
+    // Map id for client -> received from server map id msg
+    int client_map_id;
+
 public:
     //---constructor---
     Communicator(ccptr pCC, vocptr pVoc, mapptr pMap, dbptr pKFDB, bool bLoadedMap = false);

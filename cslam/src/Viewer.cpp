@@ -121,6 +121,10 @@ Viewer::Viewer(mapptr pMap, ccptr pCC)
         *ss << "ServerMapPointsMap0_w";
         mPubPcl0w = mNh.advertise<sensor_msgs::PointCloud2>(ss->str(),10);
 
+        ss = new stringstream;
+        *ss << "ServerDepthPointsMap0";
+        mPubPclDepth = mNh.advertise<sensor_msgs::PointCloud2>(ss->str(),10);
+
         //++++++++++ Map 1 +++++++++
 
         ss = new stringstream;
@@ -164,9 +168,9 @@ Viewer::Viewer(mapptr pMap, ccptr pCC)
         mPubPcl3w = mNh.advertise<sensor_msgs::PointCloud2>(ss->str(),10);
 
         // ------ Subscriber for scaling values ------
-        ScaleFactor = 1;
-        ZOffset = 0;
-        mSubScale = mNh.subscribe<ccmslam_msgs::Calibration>("/tellos/ScaleFactorClient0",10,&Viewer::SetScale,this);
+        mSubScale = mNh.subscribe<ccmslam_msgs::Calibration>("/tellos/ScaleFactorClient",10,&Viewer::SetScale,this);
+
+        
 
     }
 
@@ -812,6 +816,8 @@ void Viewer::PubMapPointsAsCloud()
 
     mvNumPoints[mCurVisBundle.mNativeId] = 0;
 
+    int scale_id = mCurVisBundle.mNativeId;
+
     for(map<idpair,mpptr>::iterator mit = mCurVisBundle.mmpMPs.begin();mit!=mCurVisBundle.mmpMPs.end();++mit)
     {
         mpptr pMPi = mit->second;
@@ -841,7 +847,7 @@ void Viewer::PubMapPointsAsCloud()
         double rads = deg * 3.14159265 / 180;
         float data[9] = { cos(rads), 0, sin(rads), 0,1,0,-sin(rads), 0, cos(rads)};
         cv::Mat rotate_12degY(3,3,CV_32F, data);
-        cv::Mat Tworld_w = rotate_12degY * tf_orb_to_ros * Tworld * ScaleFactor;
+        cv::Mat Tworld_w = rotate_12degY * tf_orb_to_ros * Tworld * ScaleFactors[scale_id];
         // --------------------------------------------
 
         p.x = (params::vis::mfScaleFactor)*((double)(Tworld.at<float>(0,0)));
@@ -850,7 +856,7 @@ void Viewer::PubMapPointsAsCloud()
 
         p_world.x = ((double)(Tworld_w.at<float>(0,0)));
         p_world.y = ((double)(Tworld_w.at<float>(0,1)));
-        p_world.z = ((double)(Tworld_w.at<float>(0,2))) + ZOffset * ScaleFactor;
+        p_world.z = ((double)(Tworld_w.at<float>(0,2))) + ZOffsets[scale_id] * ScaleFactors[scale_id];
 
         if(pMPi->mbFromServer && pMPi->mbMultiUse)
         {
@@ -899,6 +905,46 @@ void Viewer::PubMapPointsAsCloud()
 
         ++mvNumPoints[mCurVisBundle.mNativeId];
     }
+    pcl::PointXYZRGB p_depth;
+    pcl::PointCloud<pcl::PointXYZRGB> Cloud_depth;
+
+    float data_orb[9] = { 0,  0,  1,-1,  0,  0,0, -1,  0};
+    cv::Mat tf_orb_to_ros(3,3,CV_32F,data_orb);
+
+    // Rotate to account for Tello camera looking slightly downwards
+    double deg = 12;
+    double rads = deg * 3.14159265 / 180;
+    float data[9] = { cos(rads), 0, sin(rads), 0,1,0,-sin(rads), 0, cos(rads)};
+    cv::Mat rotate_12degY(3,3,CV_32F, data);
+
+    for(map<idpair,kfptr>::iterator mit = mCurVisBundle.mmpKFs.begin();mit!=mCurVisBundle.mmpKFs.end();++mit)
+    {
+        kfptr pKFi = mit->second;
+        int client_id = pKFi->mId.second;
+        std::vector<cv::Point3f> pc = pKFi->pc_depth;
+        for(cv::Point3f pc_p : pc)
+        {
+            
+            cv::Mat x3D = (cv::Mat_<float>(3,1) << pc_p.x, pc_p.y, pc_p.z);
+            cv::Mat x3Dt = x3D.t();
+
+            cv::Mat Poseworld = rotate_12degY * tf_orb_to_ros * x3D;
+            // --------------------------------------------
+
+            p_depth.x = (params::vis::mfScaleFactor)*((double)(Poseworld.at<float>(0,0)));
+            p_depth.y = (params::vis::mfScaleFactor)*((double)(Poseworld.at<float>(0,1)));
+            p_depth.z = (params::vis::mfScaleFactor)*((double)(Poseworld.at<float>(0,2))) + ZOffsets[scale_id] * ScaleFactors[scale_id];
+            p_depth.r = static_cast<uint8_t>(params::colors::mc1.mu8R);
+            p_depth.g = static_cast<uint8_t>(params::colors::mc1.mu8G);
+            p_depth.b = static_cast<uint8_t>(params::colors::mc1.mu8B);
+            Cloud_depth.push_back(p_depth);
+        }
+    }
+    sensor_msgs::PointCloud2 pclMsg_depth;
+    pcl::toROSMsg(Cloud_depth,pclMsg_depth);
+    pclMsg_depth.header.frame_id = string("world");
+    pclMsg_depth.header.stamp = ros::Time::now();
+    mPubPclDepth.publish(pclMsg_depth);
 
     if(!Cloud.points.empty())
     {
@@ -930,10 +976,10 @@ void Viewer::PubMapPointsAsCloud()
 
 void Viewer::SetScale(ccmslam_msgs::Calibration msg)
 {
-    ScaleFactor = msg.scale_factor;
-    ZOffset = msg.z_offset;
-    updated_scale = true;
-    std::cout << "Scale factor set to: " << ScaleFactor << " and Z offset to: " << ZOffset << std::endl;
+    ScaleFactors[msg.client_id] = msg.scale_factor;
+    ZOffsets[msg.client_id] = msg.z_offset;
+
+    std::cout << "Viewer: Client "<< msg.client_id <<"; Scale factor: " << ScaleFactors[msg.client_id] << "; Z offset: " << ZOffsets[msg.client_id] << std::endl;
 }
 
 pcl::PointXYZRGB Viewer::CreateMP(Mat p3D, size_t nClientId)

@@ -121,6 +121,7 @@ private:
     //Infrastructure
     ccptr mpCC;
     mapptr mpMap;
+    
 
     //+++++++++++++++++++++++++++++++++
     //Frame Drawing
@@ -157,6 +158,7 @@ private:
     ros::Publisher mPubMarker0;
     ros::Publisher mPubPcl0;
     ros::Publisher mPubPcl0w;
+    ros::Publisher mPubPclDepth;
 
     ros::Publisher mPubMarker1;
     ros::Publisher mPubPcl1;
@@ -176,9 +178,9 @@ private:
     ros::Subscriber mSubScale;
     void SetScale(ccmslam_msgs::Calibration msg);
 
-    float ScaleFactor;
-    float ZOffset;
-    bool updated_scale = false;
+    // Store scale factos and Zoffsets for each client
+    float ScaleFactors[4] = {1,1,1,1};
+    float ZOffsets[4] = {0,0,0,0};
 
     //Data
     map<string,VisBundle> mmVisData;

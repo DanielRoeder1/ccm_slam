@@ -39,7 +39,7 @@ Communicator::Communicator(ccptr pCC, vocptr pVoc, mapptr pMap, dbptr pKFDB, boo
       mKfItBoundPub(params::comm::client::miKfPubMax),
       mMpItBoundPub(params::comm::client::miMpPubMax),
       mnEmptyMsgs(0),
-      mbLoadedMap(bLoadedMap)
+      mbLoadedMap(bLoadedMap), client_map_id(pCC->mClientId)
 {
     mMsgCountLastMapMsg = 0;
     mOutMapCount = 0;
@@ -185,6 +185,7 @@ void Communicator::RunServer()
         #endif
 
         this->PublishMapServer();
+        
 
         {
             unique_lock<mutex> lock(mMutexBuffersIn);
@@ -227,6 +228,9 @@ void Communicator::RunServer()
 
 void Communicator::MapCbClient(ccmslam_msgs::MapConstPtr pMsg)
 {
+    // Set the map_id from the server to the client
+    client_map_id = pMsg->map_id;
+    
     for(int it = 0; it < pMsg->vAckKFs.size() ; ++it)
     {
         if(mlKfOpenAcks.empty())
@@ -722,6 +726,9 @@ void Communicator::PublishMapServer()
             msgMap.KFUpdates.clear();
             msgMap.MPUpdates.clear();
         }
+        
+        // Add map id to signal to client that map merge has occured
+        msgMap.map_id = mpMap->mMapId;
 
         mPubMap.publish(msgMap);
     }

@@ -419,6 +419,7 @@ void MapMatcher::CorrectLoop()
         {
             size_t idm = *sit2;
 
+            // idc and idm should be client ids and this checks whether an agent is already part of both maps that are supposed to be merged
             if(idc == idm) cout << "\033[1;31m!!! ERROR !!!\033[0m In \"MapMatcher::CorrectLoop()\": Associated Clients of matched and current map intersect" << endl;
 
             mMatchMatrix.at<uint16_t>(idc,idm) = mMatchMatrix.at<uint16_t>(idc,idm) + 1;

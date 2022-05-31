@@ -14,6 +14,8 @@
 #include <vector>
 #include <numeric>
 #include <sstream>
+#include <string.h>
+
 
 /*
 - The Listener clas subscribes to the tof_heigth topic of the drone and the PoseOut topic of the SLAM algorithm. For the
@@ -27,6 +29,7 @@ class Listener{
     public:
         std::vector<float> tof_height;
         std::vector<float> pose_z;
+        int client_id_num;
 
     private:
         ros::NodeHandle n;
@@ -47,31 +50,52 @@ class Listener{
         void calibrate(std::vector<float> tof_heights, std::vector<float> pose_z);
 
     public:
-        Listener():sync(MySyncPolicy(10),tof_sub,pose_sub){
-            
-            int client_id;
-            n.param("ClientId",client_id,0);
-            ROS_INFO("Starting Calibration node for ClientId %i", client_id);
+        Listener(char *client_id):sync(MySyncPolicy(10),tof_sub,pose_sub){
+    
+            client_id_num = *client_id - '0';
+
+            //n.param("ClientId",client_id,0);
+            ROS_INFO("Starting Calibration node for ClientId %c", *client_id);
 
             std::stringstream* ss1;
             ss1 = new std::stringstream;
-            *ss1 << "/ccmslam/PoseOutClient" << client_id;
+            *ss1 << "/ccmslam/PoseOutClient" << *client_id;
             std::string subPoseName = ss1->str();
 
-            std::stringstream* ss2;
-            ss2 = new std::stringstream;
-            *ss2 << "/tellos/ScaleFactorClient" << client_id;
-            std::string pubCalibrationName = ss2->str();
+            ss1 = new std::stringstream;
+            *ss1 << "/tellos/ScaleFactorClient" << *client_id;
+            std::string pubCalibrationName = ss1->str();
+            pubCalibrationName = "/tellos/ScaleFactorClient";
 
-            tof_sub.subscribe(n, "stamped_tof", 1);
-            pose_sub.subscribe(n,subPoseName, 1);
+
+            ss1 = new std::stringstream;
+            *ss1 << "stamped_tof" << *client_id;
+            std::string subStampedPose = ss1->str();
+
+            tof_sub.subscribe(n, subStampedPose, 10);
+            pose_sub.subscribe(n,subPoseName, 10);
             sync.registerCallback(boost::bind(&Listener::data_callback,this, _1, _2));
 
             calibrate_sub = n.subscribe<std_msgs::Empty>("calibrate_z",1000, &Listener::callibrate_callback,this);
             calibrate_pub = n.advertise<ccmslam_msgs::Calibration>(pubCalibrationName, 1000);
+            
+            std::string tello_id;
 
-            sub_tof_height = n.subscribe<std_msgs::Int32>("tellos/a/tof_height", 1000, &Listener::republish_height, this);
-            pub_tof_height = n.advertise<ccmslam_msgs::StampedInt>("stamped_tof",1000);
+            if(strcmp(client_id,"0") == 0){
+                tello_id = "a";
+            }
+            else if(strcmp(client_id,"1") == 0)
+            {
+                tello_id = "b";
+            }
+            
+            ss1 = new std::stringstream;
+            *ss1 << "tellos/" << tello_id << "/tof_height";
+            std::string subTofHeight = ss1->str();
+
+
+            sub_tof_height = n.subscribe<std_msgs::Int32>(subTofHeight, 1000, &Listener::republish_height, this);
+            pub_tof_height = n.advertise<ccmslam_msgs::StampedInt>(subStampedPose,1000);
         }
 };
 
@@ -126,8 +150,8 @@ void Listener::calibrate(std::vector<float> tof_heights, std::vector<float> pose
     b_0 = abs(b_0);
 
 
-    ROS_INFO("Calibration: ZOffset %f", b_0);
-    ROS_INFO("Calibration: Coefficient %f", b_1);
+    ROS_INFO("CalibrationNode: ZOffset %f", b_0);
+    ROS_INFO("CalibrationNode: Coefficient %f", b_1);
 
     
     //std::cout << "ZOffset: " << b_0 << std::endl;
@@ -140,8 +164,15 @@ void Listener::calibrate(std::vector<float> tof_heights, std::vector<float> pose
     double scale_factor = float(diff_tof) / diff_pose;
     std::cout << "Scaling factor: " << scale_factor << " ZOffset: " << zoffset<< std::endl;
     */
+   if(b_1 > 10){
+       std::cout << "### Encountered large scale factor and tunrcated to 2.5 0.35" << "\n";
+       b_1 = 2.5;
+       b_0 = 0.35;
+
+   }
 
     ccmslam_msgs::Calibration calibration_msg;
+    calibration_msg.client_id = client_id_num;
     calibration_msg.z_offset = b_0;
     calibration_msg.scale_factor = b_1;
 
@@ -159,9 +190,9 @@ void Listener::republish_height(std_msgs::Int32 msg)
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "SimulatedCalibrator");
-    ros::NodeHandle n;
+    //ros::NodeHandle n;
 
-    Listener l;
+    Listener l(argv[1]);
 
     ros::Rate r(100);
 

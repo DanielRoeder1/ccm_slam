@@ -36,6 +36,11 @@
 
 //ROS
 //...
+#include "nav_msgs/Path.h"
+#include <std_msgs/Float32.h>
+#include <ccmslam_msgs/Calibration.h>
+#include <ccmslam_msgs/KF_PointCloud.h>
+#include <ccmslam_msgs/KF_DepthMap.h>
 
 //CSLAM
 #include <cslam/config.h>
@@ -59,7 +64,6 @@
 
 using namespace std;
 using namespace estd;
-
 namespace cslam{
 
 //forward decs
@@ -97,8 +101,14 @@ public:
     threadptr ptrPoseStamped;
     bool receivedImageFlag;
     ros::Publisher mPubPose;
-    ros::Publisher mPubPose2;
     ros::Publisher mPubPath;
+
+    
+    void PublishKFThread();
+    threadptr ptrKFpub;
+    ros::Publisher pubKF;
+
+    void SetDepthMap(ccmslam_msgs::KF_DepthMap msg);
     /* --------------------------------- */
     void SetMapMatcher(matchptr pMatch);
     void ChangeMap(mapptr pMap, g2o::Sim3 g2oS_wnewmap_wcurmap);
@@ -117,6 +127,7 @@ public:
     //---Agent side---
     void CamImgCb(sensor_msgs::ImageConstPtr pMsg);
     void Reset();
+    void SetScale(ccmslam_msgs::Calibration msg);
 
     //---Map Save/Load---
     void LoadMap(const string &path_name);
@@ -157,6 +168,13 @@ private:
     ros::NodeHandle mNh;
     ros::NodeHandle mNhPrivate;
     ros::Subscriber mSubCam;
+    ros::Subscriber mSubScale;
+    ros::Subscriber subDepth;
+
+    // Pose Scaling factor
+    float ScaleFactors[4] = {1,1,1,1};
+    float ZOffsets[4] = {0,0,0,0};
+    bool updated_scale = false;
 
     //threads
     threadptr mptMapping;
