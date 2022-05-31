@@ -15,3 +15,6 @@ uint32 WeakAckMP
 
 uint16 ClosestKf_Id
 uint8 ClosestKf_ClientId
+
+# Signal client that map merge has occured
+uint8 map_id
